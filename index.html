@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather App</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+
+  </style>
+</head>
+
+<body>
+  <div id="background-wrap">
+    <div class="x1">
+      <div class="cloud"></div>
+    </div>
+
+    <div class="x2">
+      <div class="cloud"></div>
+    </div>
+
+    <div class="x3">
+      <div class="cloud"></div>
+    </div>
+
+    <div class="x4">
+      <div class="cloud"></div>
+    </div>
+
+    <div class="x5">
+      <div class="cloud"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Toady Weather</h1>
+    <input type="text" id="cityInput" placeholder="Enter city">
+    <button onclick="getWeatherByCity()">Get Weather</button>
+    <button onclick="getWeatherByLocation()">Use My Location</button>
+    <h2 id="location">--</h2>
+    <h3 id="temp">-- °C</h3>
+    <h4 id="condition">--</h4>
+    <img id="icon" src="" alt="" />
+    <div id="forecast"></div>
+  </div>
+
+  <script>
+    const apiKey = "ff84cfb6777c79ced33b1508b015c427";
+
+    async function getWeatherByCity() {
+      const city = document.getElementById("cityInput").value;
+      if (!city) return alert("Enter a city name");
+      fetchWeather(city);
+    }
+
+    async function fetchWeather(city) {
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+        if (!res.ok) throw new Error("City not found");
+        const data = await res.json();
+        displayWeather(data);
+        getForecast(data.coord.lat, data.coord.lon);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function getWeatherByLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`);
+          const geoData = await geoRes.json();
+          const city = geoData[0]?.name || "Your Location";
+          fetchWeather(city);
+        }, () => {
+          alert("Location access denied. Please enter city manually.");
+        });
+      } else {
+        alert("Geolocation not supported by this browser.");
+      }
+    }
+
+    function displayWeather(data) {
+      document.getElementById("location").textContent = `${data.name}, ${data.sys.country}`;
+      document.getElementById("temp").textContent = `${Math.round(data.main.temp)} °C`;
+      document.getElementById("condition").textContent = data.weather[0].description;
+      document.getElementById("icon").src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+
+      setBackground(data.weather[0].main);
+    }
+
+    async function getForecast(lat, lon) {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`);
+      const data = await res.json();
+      displayForecast(data.list);
+    }
+
+    function displayForecast(list) {
+      const forecastEl = document.getElementById("forecast");
+      forecastEl.innerHTML = "";
+      const daily = {};
+      list.forEach(item => {
+        const date = item.dt_txt.split(" ")[0];
+        if (!daily[date]) daily[date] = item;
+      });
+      Object.values(daily).slice(0, 5).forEach(day => {
+        const div = document.createElement("div");
+        div.classList.add("day");
+        div.innerHTML = `
+          <p>${new Date(day.dt_txt).toLocaleDateString()}</p>
+          <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" alt="">
+          <p>${Math.round(day.main.temp)}°C</p>
+        `;
+        forecastEl.appendChild(div);
+      });
+    }
+
+    function setBackground(condition) {
+      document.querySelectorAll('.cloud').forEach(c => c.style.display = 'none');
+
+      if (condition.includes("Cloud")) {
+        document.body.style.backgroundImage = "url('image/cloudy.jpg')";
+        document.querySelectorAll('.cloud').forEach(c => c.style.display = 'block');
+      } else if (condition.includes("Rain")) {
+        document.body.style.backgroundImage = "url('image/rain.jpg')";
+      } else {
+        document.body.style.backgroundImage = "url('image/sunny.jpg')";
+      }
+    }
+
+    window.onload = getWeatherByLocation;
+  </script>
+</body>
+
+</html>
